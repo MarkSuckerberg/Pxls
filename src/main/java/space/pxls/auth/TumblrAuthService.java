@@ -4,74 +4,56 @@ import kong.unirest.HttpResponse;
 import kong.unirest.JsonNode;
 import kong.unirest.Unirest;
 import kong.unirest.UnirestException;
-import kong.unirest.json.JSONException;
 import kong.unirest.json.JSONObject;
 import space.pxls.App;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TumblrAuthService extends AuthService {
     public TumblrAuthService(String id) {
-        super(id, App.getConfig().getBoolean("oauth.tumblr.enabled"), App.getConfig().getBoolean("oauth.tumblr.registrationEnabled"));
+        super(id, App.getConfig().getBoolean("oauth.tumblr.enabled"),
+                App.getConfig().getBoolean("oauth.tumblr.registrationEnabled"));
     }
 
-    private transient Map<String, String> tokens = new ConcurrentHashMap<String, String>();
-
-    // OAuth1 doesn't have states.... (stuff is instead handled by oauth_token's)
-    public String generateState() {
-        return "";
-    }
-
-    public boolean verifyState(String state) {
-        return true;
-    }
-
+    @Override
     public String getRedirectUrl(String state) {
-        try {
-            HttpResponse<String> response = Unirest.get("https://www.tumblr.com/oauth/request_token?" + getOauthRequestToken("https://www.tumblr.com/oauth/request_token"))
-                .header("User-Agent", "pxls.space")
-                .asString();
-            Map<String, String> query = parseQuery(response.getBody());
-            if (!query.get("oauth_callback_confirmed").equals("true")) {
-                return "/";
-            }
-            if (query.get("oauth_token") == null) {
-                return "/";
-            }
-            tokens.put(query.get("oauth_token"), query.get("oauth_token_secret"));
-            return "https://www.tumblr.com/oauth/authorize?oauth_token=" + query.get("oauth_token");
-        } catch (UnirestException e) {
-            return "/";
-        }
+        return "https://www.tumblr.com/oauth2/authorize?" +
+                "scope=profile%20email&" +
+                "state=" + state + "&" +
+                "redirect_uri=" + getCallbackUrl() + "&" +
+                "response_type=code&" +
+                "client_id=" + App.getConfig().getString("oauth.tumblr.key");
     }
 
+    @Override
     public String getToken(String code) throws UnirestException {
-        String[] codes = code.split("\\|");
-        HttpResponse<String> response = Unirest.post("https://www.tumblr.com/oauth/access_token?" + getOauthAccessToken("https://www.tumblr.com/oauth/access_token", codes[0], codes[1], tokens.get(codes[0])))
-            .header("User-Agent", "pxls.space")
-            .asString();
-        tokens.remove(codes[0]);
-        Map<String, String> query = parseQuery(response.getBody());
-        if (query.get("oauth_token") == null) {
+        HttpResponse<JsonNode> response = Unirest.post("https://api.tumblr.com/v2/oauth2/token")
+                .header("User-Agent", "pxls.space")
+                .field("grant_type", "authorization_code")
+                .field("code", code)
+                .field("redirect_uri", getCallbackUrl())
+                .field("client_id", App.getConfig().getString("oauth.tumblr.key"))
+                .field("client_secret", App.getConfig().getString("oauth.tumblr.secret"))
+                .asJson();
+
+        JSONObject json = response.getBody().getObject();
+
+        if (json.has("error")) {
             return null;
+        } else {
+            return json.getString("access_token");
         }
-        return query.get("oauth_token") + "|" + query.get("oauth_token_secret");
     }
 
-    public String getIdentifier(String token) throws UnirestException, InvalidAccountException {
-        String[] codes = token.split("\\|");
-        HttpResponse<JsonNode> me = Unirest.get("https://api.tumblr.com/v2/user/info?" + getOauthRequest("https://api.tumblr.com/v2/user/info", "oauth_token="+codes[0], "oob", "GET", codes[1]))
+    @Override
+    public String getIdentifier(String token) throws UnirestException {
+        HttpResponse<JsonNode> me = Unirest.get("https://api.tumblr.com/v2/user/info")
+                .header("Authorization", "Bearer " + token)
                 .header("User-Agent", "pxls.space")
                 .asJson();
         JSONObject json = me.getBody().getObject();
         if (json.has("error")) {
             return null;
         } else {
-            try {
-                return json.getJSONObject("response").getJSONObject("user").getString("name");
-            } catch (JSONException e) {
-                return null;
-            }
+            return json.getString("id");
         }
     }
 

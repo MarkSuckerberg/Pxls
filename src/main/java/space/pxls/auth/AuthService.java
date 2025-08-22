@@ -2,9 +2,13 @@ package space.pxls.auth;
 
 import kong.unirest.UnirestException;
 import space.pxls.App;
+import space.pxls.user.Role;
 
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
+
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -47,9 +51,11 @@ public abstract class AuthService {
             String[] pairs = query.split("&");
             for (String pair : pairs) {
                 int idx = pair.indexOf("=");
-                query_pairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"), URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
+                query_pairs.put(URLDecoder.decode(pair.substring(0, idx), "UTF-8"),
+                        URLDecoder.decode(pair.substring(idx + 1), "UTF-8"));
             }
-        } catch (UnsupportedEncodingException e) {}
+        } catch (UnsupportedEncodingException e) {
+        }
         return query_pairs;
     }
 
@@ -59,7 +65,7 @@ public abstract class AuthService {
 
             // yea, don't ask me why, it is needed to append a "&" to the end of
             // secret key.
-            String privKey = App.getConfig().getString("oauth."+id+".secret") + "&" + secret;
+            String privKey = App.getConfig().getString("oauth." + id + ".secret") + "&" + secret;
 
             SecretKey key = new SecretKeySpec(privKey.getBytes("UTF-8"), "HmacSHA1");
 
@@ -68,7 +74,7 @@ public abstract class AuthService {
 
             // encode it, base64 it, change it to string and return.
             return new String(new Base64().encode(mac.doFinal(base.getBytes(
-                "UTF-8"))), "UTF-8").trim();
+                    "UTF-8"))), "UTF-8").trim();
         } catch (UnsupportedEncodingException | NoSuchAlgorithmException | InvalidKeyException e) {
             return "";
         }
@@ -77,15 +83,17 @@ public abstract class AuthService {
     protected String getOauthRequest(String url, String _params, String callback, String method, String key) {
         try {
             String params = "oauth_callback=" + URLEncoder.encode(callback, "UTF-8") +
-                "&oauth_consumer_key=" + URLEncoder.encode(App.getConfig().getString("oauth."+id+".key"), "UTF-8") +
-                "&oauth_nonce=" + String.valueOf(Math.random() * 100000000) +
-                "&oauth_signature_method=HMAC-SHA1" +
-                "&oauth_timestamp=" + String.valueOf(System.currentTimeMillis() / 1000);
+                    "&oauth_consumer_key="
+                    + URLEncoder.encode(App.getConfig().getString("oauth." + id + ".key"), "UTF-8") +
+                    "&oauth_nonce=" + String.valueOf(Math.random() * 100000000) +
+                    "&oauth_signature_method=HMAC-SHA1" +
+                    "&oauth_timestamp=" + String.valueOf(System.currentTimeMillis() / 1000);
             if (!_params.isEmpty()) {
                 params += "&" + _params;
             }
             params += "&oauth_version=1.0";
-            String signature = getOauthSignature(URLEncoder.encode(url, "UTF-8"), URLEncoder.encode(params, "UTF-8"), key, method);
+            String signature = getOauthSignature(URLEncoder.encode(url, "UTF-8"), URLEncoder.encode(params, "UTF-8"),
+                    key, method);
             params += "&oauth_signature=" + URLEncoder.encode(signature, "UTF-8");
             return params;
         } catch (UnsupportedEncodingException e) {
@@ -100,7 +108,7 @@ public abstract class AuthService {
     protected String getOauthAccessToken(String url, String token, String verifier, String secret) {
         try {
             String params = "oauth_token=" + URLEncoder.encode(token, "UTF-8") +
-                "&oauth_verifier=" + URLEncoder.encode(verifier, "UTF-8");
+                    "&oauth_verifier=" + URLEncoder.encode(verifier, "UTF-8");
             return getOauthRequest(url, params, "oob", "POST", secret);
         } catch (UnsupportedEncodingException e) {
             return "";
@@ -121,6 +129,10 @@ public abstract class AuthService {
 
     public abstract String getIdentifier(String token) throws UnirestException, InvalidAccountException;
 
+    public List<Role> getRoles(String token) {
+        return new ArrayList<>();
+    }
+
     public static class InvalidAccountException extends Exception {
         public InvalidAccountException(String s) {
             super(s);
@@ -128,7 +140,7 @@ public abstract class AuthService {
     }
 
     public boolean use() {
-        return enabled && !App.getConfig().getString("oauth."+id+".key").isEmpty();
+        return enabled && !App.getConfig().getString("oauth." + id + ".key").isEmpty();
     }
 
     public abstract String getName();

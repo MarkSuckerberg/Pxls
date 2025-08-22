@@ -46,6 +46,7 @@ public class User {
     private String chatbanReason;
     private long cooldownExpiry;
     private long lastPixelTime = 0;
+    private long lastStackedTime = 0;
     private long initialAuthTime = 0L;
     private Timestamp signup_time;
     private Integer displayedFaction;
@@ -58,7 +59,10 @@ public class User {
 
     private Set<WebSocketChannel> connections = new HashSet<>();
 
-    public User(int id, int stacked, String name, Timestamp signup, long cooldownExpiry, List<Role> roles, boolean loginWithIP, int pixelCount, int pixelCountAllTime, Long banExpiryTime, boolean shadowBanned, boolean isPermaChatbanned, long chatbanExpiryTime, String chatbanReason, int chatNameColor, Integer displayedFaction, String discordName, Boolean factionBlocked) {
+    public User(int id, int stacked, String name, Timestamp signup, long cooldownExpiry, List<Role> roles,
+            boolean loginWithIP, int pixelCount, int pixelCountAllTime, Long banExpiryTime, boolean shadowBanned,
+            boolean isPermaChatbanned, long chatbanExpiryTime, String chatbanReason, int chatNameColor,
+            Integer displayedFaction, String discordName, Boolean factionBlocked) {
         this.id = id;
         this.stacked = stacked;
         this.name = name;
@@ -108,34 +112,43 @@ public class User {
     }
 
     public boolean canPlaceColor(int color) {
-        return color >= 0 && (color < App.getPalette().getColors().size() || (color == 0xFF && placementOverrides.getCanPlaceAnyColor()));
+        return color >= 0 && (color < App.getPalette().getColors().size()
+                || (color == 0xFF && placementOverrides.getCanPlaceAnyColor()));
     }
 
     public boolean canPlace() {
-        if (isRenameRequested) return false;
+        if (isRenameRequested)
+            return false;
 
-        if (!hasPermission("board.place")) return false;
-        if (placementOverrides.hasIgnoreCooldown()) return true;
+        if (!hasPermission("board.place"))
+            return false;
+        if (placementOverrides.hasIgnoreCooldown())
+            return true;
         return cooldownExpiry < System.currentTimeMillis();
     }
 
     public boolean undoWindowPassed() {
-        return lastPixelTime + App.getConfig().getDuration("undo.window", TimeUnit.MILLISECONDS) < System.currentTimeMillis();
+        return lastPixelTime + App.getConfig().getDuration("undo.window", TimeUnit.MILLISECONDS) < System
+                .currentTimeMillis();
     }
 
     public boolean canUndo() {
         return canUndo(true);
     }
+
     public boolean canUndo(boolean hitBucket) {
-        if (!hasPermission("board.undo")) return false;
+        if (!hasPermission("board.undo"))
+            return false;
         int rem = RateLimitFactory.getTimeRemaining(ClientUndo.class, String.valueOf(this.id), hitBucket);
         return rem == 0;
     }
 
     public void setLastPixelTime(boolean flagNotIdle) {
         lastPixelTime = System.currentTimeMillis();
-        if (flagNotIdle) setIdled(false);
+        if (flagNotIdle)
+            setIdled(false);
     }
+
     public void setLastPixelTime() {
         setLastPixelTime(false);
     }
@@ -144,10 +157,24 @@ public class User {
         return this.lastPixelTime;
     }
 
-    public float getRemainingCooldown() {
-        if (placementOverrides.hasIgnoreCooldown()) return 0;
+    public long getLastStackedTime() {
+        return this.lastStackedTime;
+    }
 
-        return Math.max(0, cooldownExpiry - System.currentTimeMillis()) / 1000f;
+    public float getRemainingCooldown() {
+        if (getStacked() >= App.getStackMaxStacked()) {
+            return 0;
+        }
+
+        long multiplier = App.getStackMultiplier();
+        long delta = (System.currentTimeMillis() - lastStackTicked()) / 1000;
+        int curCD = App.getServer().getPacketHandler().getCooldown();
+
+        if (multiplier <= 1) {
+            return curCD - delta;
+        }
+
+        return delta - (getStacked() * multiplier * curCD);
     }
 
     public void setOverrideCaptcha(boolean overrideCaptcha) {
@@ -160,9 +187,11 @@ public class User {
             return false;
         }
 
-        if (flaggedForCaptcha) return true;
+        if (flaggedForCaptcha)
+            return true;
 
-        // Don't show captcha if we *just* had one and haven't had the chance to place yet
+        // Don't show captcha if we *just* had one and haven't had the chance to place
+        // yet
         // or if the user is placing a stack
         if (justShowedCaptcha || stacked > 1) {
             flaggedForCaptcha = false;
@@ -179,7 +208,8 @@ public class User {
     }
 
     public void maybeSetIgnoreCooldown(boolean ignoreCooldown) {
-        placementOverrides.setIgnoreCooldown(ignoreCooldown && (hasPermission("board.cooldown.override") || hasPermission("board.cooldown.ignore")));
+        placementOverrides.setIgnoreCooldown(
+                ignoreCooldown && (hasPermission("board.cooldown.override") || hasPermission("board.cooldown.ignore")));
     }
 
     public boolean hasIgnoreCooldown() {
@@ -213,14 +243,16 @@ public class User {
     }
 
     public String getRolesString() {
-        if (roles.isEmpty()) return "";
+        if (roles.isEmpty())
+            return "";
         return roles.stream()
                 .map(Role::getName)
                 .collect(Collectors.joining(", "));
     }
 
     public String getRoleIDsString() {
-        if (roles.isEmpty()) return "";
+        if (roles.isEmpty())
+            return "";
         return roles.stream()
                 .map(Role::getID)
                 .collect(Collectors.joining(","));
@@ -234,8 +266,8 @@ public class User {
 
     public List<UserLogin> getLogins() {
         return App.getDatabase().getUserLogins(id).stream()
-            .map((dbLogin) -> UserLogin.fromDB(dbLogin))
-            .collect(Collectors.toList());
+                .map((dbLogin) -> UserLogin.fromDB(dbLogin))
+                .collect(Collectors.toList());
     }
 
     public boolean loginsWithIP() {
@@ -255,7 +287,8 @@ public class User {
     public void setRoles(List<Role> rolesToSet, boolean skipSendUserData) {
         this.roles = rolesToSet;
         App.getDatabase().setUserRoles(this.getId(), roles);
-        if (!skipSendUserData) sendUserData();
+        if (!skipSendUserData)
+            sendUserData();
     }
 
     public void addRoles(List<Role> rolesToAdd) {
@@ -265,7 +298,8 @@ public class User {
     public void addRoles(List<Role> rolesToAdd, boolean skipSendUserData) {
         var newRoles = new ArrayList<>(rolesToAdd);
         for (var role : roles) {
-            if (!newRoles.contains(role)) newRoles.add(role);
+            if (!newRoles.contains(role))
+                newRoles.add(role);
         }
         setRoles(newRoles, skipSendUserData);
     }
@@ -431,18 +465,19 @@ public class User {
 
     private void setBanExpiryTime(Integer timeFromNowSeconds, boolean skipSendUserData) {
         // timeFromNowSeconds
-        //   null = unban
-        //   0 = perma
-        //   n = timed
+        // null = unban
+        // 0 = perma
+        // n = timed
         if (timeFromNowSeconds == null) {
             this.banExpiryTime = null;
         } else if (timeFromNowSeconds == 0) {
             this.banExpiryTime = 0L;
         } else {
-            this.banExpiryTime = (timeFromNowSeconds*1000L) + System.currentTimeMillis();
+            this.banExpiryTime = (timeFromNowSeconds * 1000L) + System.currentTimeMillis();
         }
         App.getDatabase().updateBan(this, timeFromNowSeconds);
-        if (!skipSendUserData) sendUserData();
+        if (!skipSendUserData)
+            sendUserData();
     }
 
     public boolean canChat() {
@@ -462,7 +497,8 @@ public class User {
                 this.isPermaChatbanned = false;
                 this.chatbanExpiryTime = chatban.expiryTimeMS;
                 this.chatbanReason = chatban.reason;
-                App.getServer().getPacketHandler().sendChatban(this, new ServerChatBan(false, chatban.reason, chatban.expiryTimeMS));
+                App.getServer().getPacketHandler().sendChatban(this,
+                        new ServerChatBan(false, chatban.reason, chatban.expiryTimeMS));
                 App.getDatabase().updateChatBanReason(getId(), chatban.reason);
                 break;
             }
@@ -486,7 +522,8 @@ public class User {
         App.getDatabase().updateChatBanExpiry(getId(), chatbanExpiryTime);
 
         if (chatban.purge && chatban.purgeAmount > 0) {
-            App.getDatabase().purgeChat(chatban.target, chatban.initiator, chatban.purgeAmount, "Chatban purge: " + chatban.reason, true, chatban.announce);
+            App.getDatabase().purgeChat(chatban.target, chatban.initiator, chatban.purgeAmount,
+                    "Chatban purge: " + chatban.reason, true, chatban.announce);
         }
 
         if (doLog) {
@@ -512,11 +549,12 @@ public class User {
         shadowBanned = true;
         App.getDatabase().updateUserShadowBanned(this, true);
         App.rollbackAfterBan(this, rollbackTime);
-        App.getDatabase().insertBanLog(banner == null ? 0 : banner.getId(), this.getId(), System.currentTimeMillis(), 0L, "shadowban", reason);
+        App.getDatabase().insertBanLog(banner == null ? 0 : banner.getId(), this.getId(), System.currentTimeMillis(),
+                0L, "shadowban", reason);
     }
 
     public void shadowBan(String reason, User banner) {
-        shadowBan(reason, 24*3600, banner);
+        shadowBan(reason, 24 * 3600, banner);
     }
 
     public void ban(Integer timeFromNowSeconds, String reason, User banner) {
@@ -532,7 +570,8 @@ public class User {
         if (timeFromNowSeconds == null) {
             App.getDatabase().insertBanLog(bannerId, this.getId(), now, 0L, "permaban", reason);
         } else {
-            App.getDatabase().insertBanLog(bannerId, this.getId(), now, now + (timeFromNowSeconds * 1000), "ban", reason);
+            App.getDatabase().insertBanLog(bannerId, this.getId(), now, now + (timeFromNowSeconds * 1000), "ban",
+                    reason);
         }
     }
 
@@ -544,7 +583,8 @@ public class User {
             App.undoRollback(this);
         }
         long now = System.currentTimeMillis();
-        App.getDatabase().insertBanLog(whoUnbanned == null ? 0 : whoUnbanned.getId(), this.getId(), now, null, "unban", unbanReason);
+        App.getDatabase().insertBanLog(whoUnbanned == null ? 0 : whoUnbanned.getId(), this.getId(), now, null, "unban",
+                unbanReason);
     }
 
     public void setUserAgent(String s) {
@@ -585,39 +625,53 @@ public class User {
         tickStack(true);
     }
 
-    private int addToN(int n) {
-        int s = 0;
-        for (int i = 1; i <= n; i++) {
-            s += i;
-        }
-        return s;
+    private long lastStackTicked() {
+        int curCD = App.getServer().getPacketHandler().getCooldown();
+
+        return getLastStackedTime() == 0 ? getLastPixelTime() == 0
+                ? (this.cooldownExpiry == 0 ? getInitialAuthTime() : (this.cooldownExpiry - (curCD * 1000)))
+                : getLastPixelTime() : getLastStackedTime();
     }
 
     public void tickStack(boolean sendRes) {
-        int multiplier = App.getStackMultiplier();
+        long multiplier = App.getStackMultiplier();
         int maxStacked = App.getStackMaxStacked();
 
         int curCD = App.getServer().getPacketHandler().getCooldown();
+        long lastTick = lastStackTicked();
 
-        long lastPixelTime = getLastPixelTime() == 0 ? (this.cooldownExpiry == 0 ? getInitialAuthTime() : (this.cooldownExpiry - (curCD*1000))) : getLastPixelTime();
-        if (lastPixelTime == 0) {
+        if (lastTick == 0) {
             return;
         }
-        long delta = (System.currentTimeMillis()-lastPixelTime) / 1000;
-        //App.getLogger().debug("=======");
-        while(true) {
-            int target = (curCD * multiplier) * (2 + getStacked() + addToN(getStacked()));
-            //App.getLogger().debug(delta);
-            //App.getLogger().debug(" : ");
-            //App.getLogger().debug(target);
-            if (delta >= target && getStacked() < maxStacked) {
-                setStacked(getStacked() + 1);
-                if (sendRes) {
-                    App.getServer().getPacketHandler().sendAvailablePixels(this, "stackGain");
+        long delta = (System.currentTimeMillis() - lastTick) / 1000;
+        int toAdd = 0;
+
+        if (multiplier <= 1) {
+            long remainder = delta % curCD;
+            lastStackedTime = (System.currentTimeMillis() - (remainder * 1000));
+
+            toAdd = (int) delta / curCD;
+        } else {
+            for (int i = getStacked(); true; i++) {
+                // Summation of seconds required for each additional multiplier, starting at the
+                // current stack count
+                if (i * (2 * (multiplier * getStacked()) + (i - 1) * (multiplier * curCD)) > delta) {
+                    toAdd = i - 1;
+                    lastStackedTime = System.currentTimeMillis();
+
+                    break;
                 }
-                continue;
             }
+        }
+
+        if (toAdd == 0) {
             return;
+        }
+
+        setStacked(Math.min(getStacked() + toAdd, maxStacked));
+
+        if (sendRes) {
+            App.getServer().getPacketHandler().sendAvailablePixels(this, "stackGain");
         }
     }
 
@@ -630,7 +684,8 @@ public class User {
             return;
         }
 
-        DBUserPixelCounts newCounts = App.getDatabase().modifyPixelCounts(this.id, amount, increaseCurrent, increaseAllTime);
+        DBUserPixelCounts newCounts = App.getDatabase().modifyPixelCounts(this.id, amount, increaseCurrent,
+                increaseAllTime);
         this.pixelCount = newCounts.pixelCount;
         this.pixelCountAllTime = newCounts.pixelCountAllTime;
     }
@@ -653,9 +708,10 @@ public class User {
 
     public int getAvailablePixels() {
         boolean canPlace = canPlace();
-        if (!canPlace) return 0;
+        if (!canPlace)
+            return 0;
 
-        return (canPlace ? 1 : 0) + this.stacked;
+        return 1 + this.stacked;
     }
 
     public void setRenameRequested(boolean isRequested) {
@@ -665,7 +721,8 @@ public class User {
     }
 
     public boolean isRenameRequested(boolean reloadFromDatabase) {
-        if (reloadFromDatabase) this.isRenameRequested = App.getDatabase().isRenameRequested(id);
+        if (reloadFromDatabase)
+            this.isRenameRequested = App.getDatabase().isRenameRequested(id);
         return isRenameRequested;
     }
 
@@ -674,11 +731,14 @@ public class User {
     }
 
     public boolean updateUsername(String newName, boolean ignoreRequestedStatus) {
-        if (!ignoreRequestedStatus && !isRenameRequested) return false;
-        if (App.getDatabase().getUserByName(newName).isPresent()) return false;
+        if (!ignoreRequestedStatus && !isRenameRequested)
+            return false;
+        if (App.getDatabase().getUserByName(newName).isPresent())
+            return false;
         try {
             App.getDatabase().updateUsername(id, newName);
-            App.getDatabase().insertAdminLog(id, String.format("User %s (%d) has just changed their name to %s", name, id, newName));
+            App.getDatabase().insertAdminLog(id,
+                    String.format("User %s (%d) has just changed their name to %s", name, id, newName));
             App.getUserManager().reload();
         } catch (Exception e) {
             e.printStackTrace();
@@ -776,15 +836,15 @@ public class User {
         }
         if (broadcast) {
             App.getServer().broadcast(new ServerChatUserUpdateBuilder(getName())
-                .set("NameColor", colorIndex)
-                .build()
-            );
+                    .set("NameColor", colorIndex)
+                    .build());
         }
     }
 
     /**
      * Attempts to get placing lock. Weak implementation of a mutex lock.
-     * When placingLocked, we're in the process of placing a pixel and database tables pertaining to placements shouldn't be updated until lock is released.
+     * When placingLocked, we're in the process of placing a pixel and database
+     * tables pertaining to placements shouldn't be updated until lock is released.
      *
      * @return True if a lock was acquired, false otherwise.
      */
@@ -808,6 +868,7 @@ public class User {
 
     /**
      * Same logic as {@link #tryGetPlacingLock()}
+     * 
      * @return True if a lock was acquired, false otherwise.
      * @see #tryGetPlacingLock()
      */
@@ -863,6 +924,7 @@ public class User {
     public void setDisplayedFaction(Integer displayedFaction) {
         setDisplayedFaction(displayedFaction, true, true);
     }
+
     public void setDisplayedFaction(Integer displayedFaction, boolean hitDB, boolean broadcast) {
         this.displayedFaction = displayedFaction;
         if (hitDB) {
@@ -870,9 +932,9 @@ public class User {
         }
         if (broadcast) {
             App.getServer().broadcast(new ServerChatUserUpdateBuilder(getName())
-                .set("DisplayedFaction", (displayedFaction == null || displayedFaction == 0) ? "" : fetchDisplayedFaction())
-                .build()
-            );
+                    .set("DisplayedFaction",
+                            (displayedFaction == null || displayedFaction == 0) ? "" : fetchDisplayedFaction())
+                    .build());
         }
     }
 
@@ -893,7 +955,10 @@ public class User {
 
     public static User fromDBUser(DBUser user) {
         List<Role> roles = App.getDatabase().getUserRoles(user.id);
-        return new User(user.id, user.stacked, user.username, user.signup_time, user.cooldownExpiry, roles, user.loginWithIP, user.pixelCount, user.pixelCountAllTime, user.banExpiry, user.shadowBanned, user.isPermaChatbanned, user.chatbanExpiry, user.chatbanReason, user.chatNameColor, user.displayedFaction, user.discordName, user.factionBlocked);
+        return new User(user.id, user.stacked, user.username, user.signup_time, user.cooldownExpiry, roles,
+                user.loginWithIP, user.pixelCount, user.pixelCountAllTime, user.banExpiry, user.shadowBanned,
+                user.isPermaChatbanned, user.chatbanExpiry, user.chatbanReason, user.chatNameColor,
+                user.displayedFaction, user.discordName, user.factionBlocked);
     }
 
     public UserProfile toProfile() {
@@ -917,8 +982,7 @@ public class User {
                     dbFaction.canvasCode,
                     dbFaction.created.getTime(),
                     members,
-                    bans
-            ));
+                    bans));
         }
         return new UserProfile(
                 id,
@@ -936,20 +1000,19 @@ public class User {
                 isPermaChatbanned,
                 chatbanExpiryTime,
                 factionBlocked,
-                discordName
-        );
+                discordName);
     }
 
     public UserProfileMinimal toProfileMinimal() {
         return new UserProfileMinimal(
                 id,
                 name,
-                pixelCountAllTime
-        );
+                pixelCountAllTime);
     }
 
     public UserProfileOther toProfileOther() {
-        List<DBFaction> factions = App.getDatabase().getFactionsForUID(getId()).stream().filter(dbFaction -> dbFaction.id == this.displayedFaction).toList();
+        List<DBFaction> factions = App.getDatabase().getFactionsForUID(getId()).stream()
+                .filter(dbFaction -> dbFaction.id == this.displayedFaction).toList();
         List<ProfileFactionOther> profileFactions = new ArrayList<>();
         for (DBFaction dbFaction : factions) {
             String ownerName = App.getDatabase().getUserByID(dbFaction.owner).get().username;
@@ -965,8 +1028,7 @@ public class User {
                     dbFaction.owner,
                     ownerName,
                     dbFaction.canvasCode,
-                    dbFaction.created.getTime()
-            ));
+                    dbFaction.created.getTime()));
         }
         return new UserProfileOther(
                 id,
@@ -984,7 +1046,6 @@ public class User {
                 isPermaChatbanned,
                 chatbanExpiryTime,
                 factionBlocked,
-                discordName
-        );
+                discordName);
     }
 }

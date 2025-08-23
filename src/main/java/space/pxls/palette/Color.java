@@ -3,10 +3,12 @@ package space.pxls.palette;
 public class Color {
 	private String name;
 	private String value;
+	private Boolean background;
 
-	public Color(String name, String value) {
+	public Color(String name, String value, Boolean background) {
 		this.name = name;
 		this.value = normalizeHex(value);
+		this.background = background;
 	}
 
 	public String getValue() {
@@ -17,6 +19,10 @@ public class Color {
 		return name;
 	}
 
+	public Boolean isBackground() {
+		return background;
+	}
+
 	public static String normalizeHex(String hex) {
 		if (hex.startsWith("#")) {
 			hex = hex.substring(1);
@@ -25,7 +31,7 @@ public class Color {
 		if (hex.length() == 3) {
 			StringBuilder expanded = new StringBuilder();
 			for (char c : hex.toCharArray()) {
-				expanded.append(new char[]{ c, c });
+				expanded.append(new char[] { c, c });
 			}
 			hex = expanded.toString();
 		} else if (hex.length() != 6) {

@@ -915,7 +915,7 @@ public class App {
         int defaultIdx = -1;
         for (ConfigValue colorConfig : paletteConfig.getList("colors")) {
             Map<String, Object> color = (Map<String, Object>) colorConfig.unwrapped();
-            colors.add(new Color((String) color.get("name"), (String) color.get("value")));
+            colors.add(new Color((String) color.get("name"), (String) color.get("value"), (Boolean) color.getOrDefault("background", false)));
         }
 
         if (paletteConfig.hasPath("backgroundColor")) {

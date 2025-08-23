@@ -1,14 +1,6 @@
 
 # Force Build 8
-FROM maven:3.9.11-eclipse-temurin-17-alpine AS deps
-
-
-# Download dependencies as a separate step to take advantage of Docker's caching.
-# Leverage a cache mount to /root/.m2 so that subsequent builds don't have to
-# re-download packages.
-RUN --mount=type=bind,source=pom.xml,target=pom.xml 
-
-FROM deps AS build
+FROM maven:3.9.11-eclipse-temurin-24-alpine AS build
 COPY . /Pxls/
 WORKDIR /Pxls
 RUN java -version
@@ -17,7 +9,7 @@ RUN mvn clean package; \
     cp target/pxls*.jar /tmp/pxls/pxls.jar; \
     cp -r resources/* /tmp/pxls
 
-FROM eclipse-temurin:17-jdk-alpine
+FROM eclipse-temurin:24-jdk-alpine
 
 RUN apk add\ 
     curl

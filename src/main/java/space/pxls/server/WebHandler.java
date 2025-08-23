@@ -1903,7 +1903,7 @@ public class WebHandler {
                 App.getCanvasCode(),
                 App.getWidth(),
                 App.getHeight(),
-                App.getPalette().getColors(),
+                App.getPalette().getColors().stream().filter(c -> !c.isBackground()).toList(),
                 new CanvasInfo.CooldownInfo(App.getConfig().getString("cooldownType"),
                         App.getConfig().getDuration("staticCooldown.time", TimeUnit.SECONDS),
                         App.getConfig().getObject("activityCooldown").unwrapped()),
@@ -2157,7 +2157,8 @@ public class WebHandler {
         }
 
         var selfProfileMinimal = self.toProfileMinimal();
-        var palette = App.getPalette().getColors().stream().map(Color::getValue).collect(Collectors.joining(","));
+        var palette = App.getPalette().getColors().stream().filter(color -> color.isBackground()).map(Color::getValue)
+                .collect(Collectors.joining(","));
         var snipMode = App.getSnipMode();
 
         if (user == self) {

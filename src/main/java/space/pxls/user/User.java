@@ -635,7 +635,12 @@ public class User {
 
     public void tickStack(boolean sendRes) {
         long multiplier = App.getStackMultiplier();
-        int maxStacked = App.getStackMaxStacked();
+        int maxStacked = getMaxStacked();
+
+        if (getStacked() >= maxStacked) {
+            lastStackedTime = 0;
+            return;
+        }
 
         int curCD = App.getServer().getPacketHandler().getCooldown();
         long lastTick = lastStackTicked();

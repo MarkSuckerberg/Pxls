@@ -162,7 +162,7 @@ public class User {
     }
 
     public float getRemainingCooldown() {
-        if (getStacked() >= App.getStackMaxStacked()) {
+        if (getStacked() >= getMaxStacked()) {
             return 0;
         }
 
@@ -603,6 +603,11 @@ public class User {
     public void setStacked(int stacked) {
         this.stacked = stacked;
         App.getDatabase().updateUserStacked(this, stacked);
+    }
+
+    public int getMaxStacked() {
+        return App.getStackMaxStacked()
+                + (this.pixelCount / App.getConfig().getInt("stacking.extraPerPixels"));
     }
 
     public long getInitialAuthTime() {

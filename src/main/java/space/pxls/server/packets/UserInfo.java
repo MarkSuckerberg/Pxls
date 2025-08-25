@@ -10,6 +10,7 @@ public class UserInfo {
     public List<Role> roles;
     public int pixelCount;
     public int pixelCountAllTime;
+    public int maxStacked;
     public Boolean banned;
     public Long banExpiry;
     public String banReason;
@@ -24,7 +25,7 @@ public class UserInfo {
     public Number chatNameColor;
 
     public UserInfo(String username, List<Role> roles, int pixelCount, int pixelCountAllTime,
-                    Boolean banned, Long banExpiry, String banReason, String method,
+                    int maxStacked, Boolean banned, Long banExpiry, String banReason, String method,
                     PlacementOverrides placementOverrides, Boolean chatBanned, String chatbanReason,
                     Boolean chatbanIsPerma, Long chatbanExpiry, Boolean renameRequested, String discordName,
                     Number chatNameColor) {
@@ -32,6 +33,7 @@ public class UserInfo {
         this.roles = roles;
         this.pixelCount = pixelCount;
         this.pixelCountAllTime = pixelCountAllTime;
+        this.maxStacked = maxStacked;
         this.banned = banned;
         this.banExpiry = banExpiry;
         this.banReason = banReason;

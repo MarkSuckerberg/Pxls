@@ -1606,6 +1606,7 @@ public class WebHandler {
                                 user.getLogins(),
                                 user.getPixelCount(),
                                 user.getAllTimePixelCount(),
+                                user.getMaxStacked(),
                                 user.isBanned(),
                                 user.getBanExpiryTime(),
                                 user.getBanReason(),

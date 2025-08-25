@@ -12,6 +12,7 @@ import kong.unirest.json.JSONObject;
 import space.pxls.App;
 import space.pxls.data.DBChatMessage;
 import space.pxls.data.DBPixelPlacementFull;
+import space.pxls.server.packets.UserInfo;
 import space.pxls.server.packets.chat.*;
 import space.pxls.server.packets.socket.*;
 import space.pxls.user.Faction;
@@ -72,6 +73,7 @@ public class PacketHandler {
                     user.getAllRoles(),
                     user.getPixelCount(),
                     user.getAllTimePixelCount(),
+                    user.getMaxStacked(),
                     user.isBanned(),
                     user.getBanExpiryTime(),
                     user.getBanReason(),
@@ -227,7 +229,7 @@ public class PacketHandler {
                     return;
 
                 if (user.lastPlaceWasStack()) {
-                    user.setStacked(Math.min(user.getStacked() + 1, App.getConfig().getInt("stacking.maxStacked")));
+                    user.setStacked(Math.min(user.getStacked() + 1, user.getMaxStacked()));
                     sendAvailablePixels(user, "undo");
                 }
                 user.setCooldown(0);
@@ -656,8 +658,13 @@ public class PacketHandler {
     }
 
     public void sendPixelCountUpdate(User user) {
+        boolean levelUp = user.getPixelCount() % App.getConfig().getInt("stacking.extraPerPixels") == 0;
+
         for (WebSocketChannel ch : user.getConnections()) {
             server.send(ch, new ServerPixelCountUpdate(user));
+            if (levelUp) {
+                userdata(ch, user);
+            }
         }
     }
 

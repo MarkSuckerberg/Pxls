@@ -1,26 +1,30 @@
 package space.pxls.user;
 
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import io.undertow.websockets.core.WebSocketChannel;
 import space.pxls.App;
 import space.pxls.data.DBFaction;
 import space.pxls.data.DBUser;
 import space.pxls.data.DBUserPixelCounts;
 import space.pxls.server.packets.chat.Badge;
+import space.pxls.server.packets.chat.ServerChatBan;
 import space.pxls.server.packets.chat.ServerChatUserUpdateBuilder;
 import space.pxls.server.packets.http.UserProfile;
 import space.pxls.server.packets.http.UserProfileMinimal;
 import space.pxls.server.packets.http.UserProfileOther;
 import space.pxls.server.packets.socket.ClientUndo;
-import space.pxls.server.packets.chat.ServerChatBan;
 import space.pxls.server.packets.socket.ServerRename;
 import space.pxls.util.RateLimitFactory;
-
-import java.sql.Timestamp;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class User {
     private int id;

@@ -1,5 +1,7 @@
 package space.pxls.server.packets.socket;
 
+import space.pxls.App;
+
 public class ClientPlace {
     public String type;
     public Integer x;
@@ -26,6 +28,10 @@ public class ClientPlace {
     }
 
     public Integer getColor() {
+        if (color == 0xFE) {
+            color = ((int)App.getDefaultPixel(x, y));
+        }
+
         return color;
     }
 }

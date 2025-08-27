@@ -1078,11 +1078,15 @@ public class App {
     }
 
     public static void putPixel(int x, int y, int color, User user, boolean mod_action, String ip, boolean updateDatabase, String action) {
-        if (x < 0 || x >= width || y < 0 || y >= height || (color >= getPalette().getColors().size() && !(color == 0xFF || color == -1))) return;
+        if (x < 0 || x >= width || y < 0 || y >= height || (color >= getPalette().getColors().size() && !(color == 0xFF || color == 0xFE || color == -1))) return;
         String userName = user != null ? user.getName() : "<server>";
 
         if (action.trim().isEmpty()) {
             action = mod_action ? "mod overwrite" : "user place";
+        }
+
+        if (color == 0xFE) {
+            color = getDefaultPixel(x, y);
         }
 
         board.put(x + y * width, (byte) color);
@@ -1091,7 +1095,7 @@ public class App {
         pixelLogger.log(Level.INFO, String.format("%s\t%d\t%d\t%d\t%s", userName, x, y, color, action));
         if (updateDatabase) {
             database.placePixel(x, y, color, user, mod_action);
-            if (!mod_action) {
+            if (!mod_action && user != null) {
                 user.increasePixelCounts();
             }
         }

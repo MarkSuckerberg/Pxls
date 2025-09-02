@@ -335,7 +335,7 @@ public class User {
     }
 
     public void setCooldown(int seconds) {
-        cooldownExpiry = System.currentTimeMillis() + (seconds * 1000);
+        cooldownExpiry = getLastStackedTime() + (seconds * 1000);
     }
 
     public PlacementOverrides getPlaceOverrides() {
@@ -637,27 +637,33 @@ public class User {
     private long lastStackTicked() {
         int curCD = App.getServer().getPacketHandler().getCooldown();
 
-        long lastTime = Math.max(Math.max(getLastStackedTime(), getLastPixelTime()),
-                (this.cooldownExpiry - curCD * 1000));
-
+        long lastTime = Math.max(getLastStackedTime(), this.cooldownExpiry - curCD * 1000);
+        lastTime = lastTime == 0 ? getLastPixelTime() : lastTime;
         return lastTime == 0 ? getInitialAuthTime() : lastTime;
     }
 
     public void tickStack(boolean sendRes) {
-        long multiplier = App.getStackMultiplier();
         int maxStacked = getMaxStacked();
 
-        if (getStacked() >= maxStacked || !canPlace()) {
-            lastStackedTime = this.cooldownExpiry;
+        if (getStacked() >= maxStacked) {
+            lastStackedTime = 0;
             return;
         }
 
-        int curCD = App.getServer().getPacketHandler().getCooldown();
+        if (!canPlace()) {
+            lastStackedTime = cooldownExpiry;
+            return;
+        }
+
         long lastTick = lastStackTicked();
 
         if (lastTick == 0) {
             return;
         }
+
+        long multiplier = App.getStackMultiplier();
+        int curCD = App.getServer().getPacketHandler().getCooldown();
+
         long delta = (System.currentTimeMillis() - lastTick) / 1000;
         int toAdd = 0;
 

@@ -637,17 +637,16 @@ public class User {
     private long lastStackTicked() {
         int curCD = App.getServer().getPacketHandler().getCooldown();
 
-        return getLastStackedTime() == 0 ? getLastPixelTime() == 0
-                ? (this.cooldownExpiry == 0 ? getInitialAuthTime() : (this.cooldownExpiry - (curCD * 1000)))
-                : getLastPixelTime() : getLastStackedTime();
+        return Math.max(Math.max(getLastStackedTime(), getLastPixelTime()),
+                Math.max(getInitialAuthTime(), (this.cooldownExpiry - curCD * 1000)));
     }
 
     public void tickStack(boolean sendRes) {
         long multiplier = App.getStackMultiplier();
         int maxStacked = getMaxStacked();
 
-        if (getStacked() >= maxStacked) {
-            lastStackedTime = 0;
+        if (getStacked() >= maxStacked || !canPlace()) {
+            lastStackedTime = this.cooldownExpiry;
             return;
         }
 

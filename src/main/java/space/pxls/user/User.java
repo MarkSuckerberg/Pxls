@@ -40,7 +40,6 @@ public class User {
     private boolean overrideCaptcha = false;
     private boolean flaggedForCaptcha = true;
     private boolean justShowedCaptcha;
-    private boolean lastPlaceWasStack = false;
     private AtomicBoolean placingLock = new AtomicBoolean(false);
     private AtomicBoolean undoLock = new AtomicBoolean(false);
     private boolean isPermaChatbanned = false;
@@ -48,7 +47,6 @@ public class User {
     private boolean isIdled = false;
     private String discordName;
     private String chatbanReason;
-    private long cooldownExpiry;
     private long lastPixelTime = 0;
     private long lastStackedTime = 0;
     private long initialAuthTime = 0L;
@@ -63,7 +61,7 @@ public class User {
 
     private Set<WebSocketChannel> connections = new HashSet<>();
 
-    public User(int id, int stacked, String name, Timestamp signup, long cooldownExpiry, List<Role> roles,
+    public User(int id, int stacked, String name, Timestamp signup, long lastStacked, List<Role> roles,
             boolean loginWithIP, int pixelCount, int pixelCountAllTime, Long banExpiryTime, boolean shadowBanned,
             boolean isPermaChatbanned, long chatbanExpiryTime, String chatbanReason, int chatNameColor,
             Integer displayedFaction, String discordName, Boolean factionBlocked) {
@@ -71,7 +69,7 @@ public class User {
         this.stacked = stacked;
         this.name = name;
         this.signup_time = signup;
-        this.cooldownExpiry = cooldownExpiry;
+        this.lastStackedTime = lastStacked;
         this.roles = roles;
         this.pixelCount = pixelCount;
         this.pixelCountAllTime = pixelCountAllTime;
@@ -97,7 +95,7 @@ public class User {
             this.stacked = user.stacked;
             this.name = user.username;
             this.signup_time = user.signup_time;
-            this.cooldownExpiry = user.cooldownExpiry;
+            this.lastStackedTime = user.lastStacked;
             this.roles = roles;
             this.banExpiryTime = user.banExpiry;
             this.isPermaChatbanned = user.isPermaChatbanned;
@@ -128,7 +126,7 @@ public class User {
             return false;
         if (placementOverrides.hasIgnoreCooldown())
             return true;
-        return cooldownExpiry < System.currentTimeMillis();
+        return stacked > 0;
     }
 
     public boolean undoWindowPassed() {
@@ -196,8 +194,7 @@ public class User {
 
         // Don't show captcha if we *just* had one and haven't had the chance to place
         // yet
-        // or if the user is placing a stack
-        if (justShowedCaptcha || stacked > 1) {
+        if (justShowedCaptcha) {
             flaggedForCaptcha = false;
             justShowedCaptcha = false;
             return false;
@@ -335,7 +332,8 @@ public class User {
     }
 
     public void setCooldown(int seconds) {
-        cooldownExpiry = getLastStackedTime() + (seconds * 1000);
+        int curCD = App.getServer().getPacketHandler().getCooldown();
+        lastStackedTime = System.currentTimeMillis() - (curCD * 1000) - (seconds * 1000);
     }
 
     public PlacementOverrides getPlaceOverrides() {
@@ -622,22 +620,12 @@ public class User {
         this.initialAuthTime = initialAuthTime;
     }
 
-    public boolean lastPlaceWasStack() {
-        return lastPlaceWasStack;
-    }
-
-    public void setLastPlaceWasStack(boolean lastPlaceWasStack) {
-        this.lastPlaceWasStack = lastPlaceWasStack;
-    }
-
     public void tickStack() {
         tickStack(true);
     }
 
     private long lastStackTicked() {
-        int curCD = App.getServer().getPacketHandler().getCooldown();
-
-        long lastTime = Math.max(getLastStackedTime(), this.cooldownExpiry - curCD * 1000);
+        long lastTime = getLastStackedTime();
         lastTime = lastTime == 0 ? getLastPixelTime() : lastTime;
         return lastTime == 0 ? getInitialAuthTime() : lastTime;
     }
@@ -647,11 +635,6 @@ public class User {
 
         if (getStacked() >= maxStacked) {
             lastStackedTime = 0;
-            return;
-        }
-
-        if (!canPlace()) {
-            lastStackedTime = cooldownExpiry;
             return;
         }
 
@@ -728,11 +711,7 @@ public class User {
     }
 
     public int getAvailablePixels() {
-        boolean canPlace = canPlace();
-        if (!canPlace)
-            return 0;
-
-        return 1 + this.stacked;
+        return this.stacked;
     }
 
     public void setRenameRequested(boolean isRequested) {
@@ -976,7 +955,7 @@ public class User {
 
     public static User fromDBUser(DBUser user) {
         List<Role> roles = App.getDatabase().getUserRoles(user.id);
-        return new User(user.id, user.stacked, user.username, user.signup_time, user.cooldownExpiry, roles,
+        return new User(user.id, user.stacked, user.username, user.signup_time, user.lastStacked, roles,
                 user.loginWithIP, user.pixelCount, user.pixelCountAllTime, user.banExpiry, user.shadowBanned,
                 user.isPermaChatbanned, user.chatbanExpiry, user.chatbanReason, user.chatNameColor,
                 user.displayedFaction, user.discordName, user.factionBlocked);

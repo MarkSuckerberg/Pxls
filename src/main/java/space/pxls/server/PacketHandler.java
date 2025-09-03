@@ -228,11 +228,8 @@ public class PacketHandler {
                 if (thisPixel.id != recentPixel.get().id)
                     return;
 
-                if (user.lastPlaceWasStack()) {
-                    user.setStacked(Math.min(user.getStacked() + 1, user.getMaxStacked()));
-                    sendAvailablePixels(user, "undo");
-                }
-                user.setCooldown(0);
+                user.setStacked(Math.min(user.getStacked() + 1, user.getMaxStacked()));
+                sendAvailablePixels(user, "undo");
                 DBPixelPlacementFull lastPixel = App.getDatabase().getPixelByID(null, thisPixel.secondaryId);
                 if (lastPixel != null) {
                     App.getDatabase().putUserUndoPixel(lastPixel, user, thisPixel.id);
@@ -288,15 +285,7 @@ public class PacketHandler {
                         boolean isInsidePlacemap = App.getCanPlace(cp.getX(), cp.getY());
                         boolean isColorDifferent = c != cp.getColor();
 
-                        int c_old = c;
                         if (user.hasIgnorePlacemap() || (isInsidePlacemap && isColorDifferent)) {
-                            int seconds = getCooldown();
-                            if (c_old != 0xFF && c_old != -1
-                                    && App.getDatabase().shouldPixelTimeIncrease(user.getId(), cp.getX(), cp.getY())
-                                    && App.getConfig().getBoolean("backgroundPixel.enabled")) {
-                                seconds = (int) Math
-                                        .round(seconds * App.getConfig().getDouble("backgroundPixel.multiplier"));
-                            }
                             if (user.isShadowBanned()) {
                                 // ok let's just pretend to set a pixel...
                                 App.logShadowbannedPixel(cp.getX(), cp.getY(), cp.getColor(), user.getName(), ip);
@@ -322,17 +311,10 @@ public class PacketHandler {
                                 if (user.isIdled()) {
                                     user.setIdled(false);
                                 }
+
                                 user.setLastPixelTime();
-                                if (user.getStacked() > 0) {
-                                    user.setLastPlaceWasStack(true);
-                                    user.setStacked(user.getStacked() - 1);
-                                    sendAvailablePixels(user, "consume");
-                                } else {
-                                    user.setLastPlaceWasStack(false);
-                                    user.setCooldown(seconds);
-                                    App.getDatabase().updateUserTime(user.getId(), seconds);
-                                    sendAvailablePixels(user, "consume");
-                                }
+                                user.setStacked(user.getStacked() - 1);
+                                sendAvailablePixels(user, "consume");
 
                                 if (user.canUndo(false)) {
                                     server.send(channel, new ServerCanUndo(

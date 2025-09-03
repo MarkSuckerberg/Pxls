@@ -1,11 +1,11 @@
 package space.pxls.data;
 
-import org.jdbi.v3.core.mapper.RowMapper;
-import org.jdbi.v3.core.statement.StatementContext;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 
 public class DBUser {
     public int id;
@@ -13,7 +13,7 @@ public class DBUser {
     public int chatNameColor;
     public Timestamp signup_time;
     public String username;
-    public long cooldownExpiry;
+    public long lastStacked;
     public boolean loginWithIP;
     public String signupIP;
     public int pixelCount;
@@ -28,12 +28,12 @@ public class DBUser {
     public Integer displayedFaction;
     public Boolean factionBlocked;
 
-    public DBUser(int id, int stacked, String username, Timestamp signup, long cooldownExpiry, boolean loginWithIP, String signupIP, int pixelCount, int pixelCountAllTime, Long banExpiry, boolean shadowBanned, boolean isPermaChatbanned, long chatbanExpiry, boolean isRenameRequested, String discordName, String chatbanReason, int chatNameColor, Integer displayedFaction, Boolean factionBlocked) {
+    public DBUser(int id, int stacked, String username, Timestamp signup, long lastStacked, boolean loginWithIP, String signupIP, int pixelCount, int pixelCountAllTime, Long banExpiry, boolean shadowBanned, boolean isPermaChatbanned, long chatbanExpiry, boolean isRenameRequested, String discordName, String chatbanReason, int chatNameColor, Integer displayedFaction, Boolean factionBlocked) {
         this.id = id;
         this.stacked = stacked;
         this.username = username;
         this.signup_time = signup;
-        this.cooldownExpiry = cooldownExpiry;
+        this.lastStacked = lastStacked;
         this.loginWithIP = loginWithIP;
         this.signupIP = signupIP;
         this.pixelCount = pixelCount;

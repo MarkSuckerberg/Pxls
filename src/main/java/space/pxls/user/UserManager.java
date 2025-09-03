@@ -1,13 +1,13 @@
 package space.pxls.user;
 
-import space.pxls.App;
-import space.pxls.data.DBUser;
-import space.pxls.util.Util;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+
+import space.pxls.App;
+import space.pxls.data.DBUser;
+import space.pxls.util.Util;
 
 public class UserManager {
     private Map<String, User> usersByToken = new ConcurrentHashMap<>();
@@ -68,7 +68,7 @@ public class UserManager {
         if (!optionalUser.isPresent()) return null;
         DBUser user = optionalUser.get();
         List<Role> roles = App.getDatabase().getUserRoles(user.id);
-        return userCache.computeIfAbsent(user.id, (k) -> new User(user.id, user.stacked, user.username, user.signup_time, user.cooldownExpiry, roles, user.loginWithIP, user.pixelCount, user.pixelCountAllTime, user.banExpiry, user.shadowBanned, user.isPermaChatbanned, user.chatbanExpiry, user.chatbanReason, user.chatNameColor, user.displayedFaction, user.discordName, user.factionBlocked));
+        return userCache.computeIfAbsent(user.id, (k) -> new User(user.id, user.stacked, user.username, user.signup_time, user.lastStacked, roles, user.loginWithIP, user.pixelCount, user.pixelCountAllTime, user.banExpiry, user.shadowBanned, user.isPermaChatbanned, user.chatbanExpiry, user.chatbanReason, user.chatNameColor, user.displayedFaction, user.discordName, user.factionBlocked));
     }
 
     public String logIn(User user, String ip) {
